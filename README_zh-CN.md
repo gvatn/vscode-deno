@@ -80,14 +80,14 @@
 
 > 这些方式都被 Deno 支持
 
-1. ~编译注释~
+1. 编译注释
 
 ```ts
 // @deno-types="./foo.d.ts"
 import * as foo from "./foo.js";
 ```
 
-> 目前它不会在扩展中实现.
+查看 [示例](/examples/compile-hint/mod.ts)
 
 2. `三斜杠`引用指令
 
@@ -98,6 +98,8 @@ import { format } from "https://deno.land/x/date_fns/index.js";
 
 format(new Date(), "yyyy/MM/DD");
 ```
+
+查看 [示例](/examples/react/mod.tsx)
 
 3. `X-TypeScript-Types` 自定义返回头
 

@@ -1,3 +1,53 @@
+## [3.6.1](https://github.com/axetroy/vscode-deno/compare/v3.6.0...v3.6.1) (2020-04-17)
+
+### Bug Fixes
+
+- In Deno's cache module, `x-typescript-types` and redirects are not parsed correctly. close [#147](https://github.com/axetroy/vscode-deno/issues/147) ([a3a957f](https://github.com/axetroy/vscode-deno/commit/a3a957f617617e19ea69e0941f961b57589574fc))
+- **deps:** update dependency semver to v7.3.1 ([#143](https://github.com/axetroy/vscode-deno/issues/143)) ([16a112b](https://github.com/axetroy/vscode-deno/commit/16a112b69318b2ac1fd3cea6de8c4dcd75874e8e))
+- **deps:** update dependency semver to v7.3.2 ([#144](https://github.com/axetroy/vscode-deno/issues/144)) ([8496c84](https://github.com/axetroy/vscode-deno/commit/8496c845e17d44e313b9e5139d7e993a865dd956))
+
+# [3.6.0](https://github.com/axetroy/vscode-deno/compare/v3.5.1...v3.6.0) (2020-04-14)
+
+### Bug Fixes
+
+- import map with trailing slash ([#142](https://github.com/axetroy/vscode-deno/issues/142)) ([d5ecc7e](https://github.com/axetroy/vscode-deno/commit/d5ecc7e2ead8df65fcbc30d1e1d08431b91b177e))
+- **deps:** update dependency semver to v7.2.2 ([#137](https://github.com/axetroy/vscode-deno/issues/137)) ([d9bd9c8](https://github.com/axetroy/vscode-deno/commit/d9bd9c8df4ffbe0c8446909717a3ce751c43f5eb))
+- **deps:** update dependency semver to v7.3.0 ([#140](https://github.com/axetroy/vscode-deno/issues/140)) ([13e3947](https://github.com/axetroy/vscode-deno/commit/13e3947928f1999963c6e2166f5c3e57d61aa67d))
+
+### Features
+
+- ignore typescript compile options which ignore by Deno ([b48fed0](https://github.com/axetroy/vscode-deno/commit/b48fed01dcbd4d5d1bd08e6d060e5217c094b9e6))
+
+## [3.5.1](https://github.com/axetroy/vscode-deno/compare/v3.5.0...v3.5.1) (2020-04-09)
+
+### Bug Fixes
+
+- add more test case for import_map. ref [#132](https://github.com/axetroy/vscode-deno/issues/132) ([e4b1d6a](https://github.com/axetroy/vscode-deno/commit/e4b1d6aee4f55f17f00ef204048e77285f5b5ee3))
+
+# [3.5.0](https://github.com/axetroy/vscode-deno/compare/v3.4.2...v3.5.0) (2020-04-09)
+
+### Bug Fixes
+
+- refresh diagnostic not work ([f8e8e70](https://github.com/axetroy/vscode-deno/commit/f8e8e706f9ef2e45b78aafd5a7b28ddd03c80679))
+
+### Features
+
+- compatible deno cache command since Deno v0.40.0 ([7309b0c](https://github.com/axetroy/vscode-deno/commit/7309b0c3b58bd1a2ed4fc5af65fa0bd3f4626336))
+- support deno-types compile hint ([#129](https://github.com/axetroy/vscode-deno/issues/129)) ([9be33a4](https://github.com/axetroy/vscode-deno/commit/9be33a41c8d94c49a1420d124dcdad74b7778ee9))
+
+## [3.4.2](https://github.com/axetroy/vscode-deno/compare/v3.4.1...v3.4.2) (2020-04-08)
+
+### Bug Fixes
+
+- if `x-typescript-types` do not exist. then fallback to origin file ([05496e3](https://github.com/axetroy/vscode-deno/commit/05496e3022e371c5be7e821c9f778c8ed7cfbc77))
+- **deps:** update dependency semver to v7.2.1 ([#128](https://github.com/axetroy/vscode-deno/issues/128)) ([90f4ad2](https://github.com/axetroy/vscode-deno/commit/90f4ad2f94db9762f23fdd9b79d73572cf1db5e2))
+
+## [3.4.1](https://github.com/axetroy/vscode-deno/compare/v3.4.0...v3.4.1) (2020-03-31)
+
+### Bug Fixes
+
+- Tsserver crashes in some cases ([11563b4](https://github.com/axetroy/vscode-deno/commit/11563b4df4e84b0c92bc256f2be6bf0dd6fc9954))
+
 # [3.4.0](https://github.com/axetroy/vscode-deno/compare/v3.3.1...v3.4.0) (2020-03-27)
 
 ### Bug Fixes

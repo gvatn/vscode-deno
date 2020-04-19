@@ -8,9 +8,68 @@ import { ConfigurationManager, DenoPluginConfig } from "./configuration";
 import { getDenoDts } from "../../core/deno";
 import { ModuleResolver } from "../../core/module_resolver";
 import { CacheModule } from "../../core/deno_cache";
-import { pathExistsSync, normalizeFilepath } from "../../core/util";
+import { normalizeFilepath } from "../../core/util";
 import { normalizeImportStatement } from "../../core/deno_normalize_import_statement";
 import { readConfigurationFromVscodeSettings } from "../../core/vscode_settings";
+import { getImportModules } from "../../core/deno_deps";
+
+const ignoredCompilerOptions: readonly string[] = [
+  "allowSyntheticDefaultImports",
+  "baseUrl",
+  "build",
+  "composite",
+  "declaration",
+  "declarationDir",
+  "declarationMap",
+  "diagnostics",
+  "downlevelIteration",
+  "emitBOM",
+  "emitDeclarationOnly",
+  "esModuleInterop",
+  "extendedDiagnostics",
+  "forceConsistentCasingInFileNames",
+  "help",
+  "importHelpers",
+  "incremental",
+  "inlineSourceMap",
+  "inlineSources",
+  "init",
+  "isolatedModules",
+  "listEmittedFiles",
+  "listFiles",
+  "mapRoot",
+  "maxNodeModuleJsDepth",
+  "module",
+  "moduleResolution",
+  "newLine",
+  "noEmit",
+  "noEmitHelpers",
+  "noEmitOnError",
+  "noLib",
+  "noResolve",
+  "out",
+  "outDir",
+  "outFile",
+  "paths",
+  "preserveSymlinks",
+  "preserveWatchOutput",
+  "pretty",
+  "rootDir",
+  "rootDirs",
+  "showConfig",
+  "skipDefaultLibCheck",
+  "skipLibCheck",
+  "sourceMap",
+  "sourceRoot",
+  "stripInternal",
+  "target",
+  "traceResolution",
+  "tsBuildInfoFile",
+  "types",
+  "typeRoots",
+  "version",
+  "watch",
+];
 
 export class DenoPlugin implements ts_module.server.PluginModule {
   // plugin name
@@ -88,14 +147,19 @@ export class DenoPlugin implements ts_module.server.PluginModule {
         return projectConfig;
       }
 
+      // delete the option which ignore by Deno
+      // see https://github.com/denoland/deno/blob/bced52505f/cli/js/compiler/host.ts#L65-L121
+      for (const option in projectConfig) {
+        if (ignoredCompilerOptions.includes(option)) {
+          delete projectConfig[option];
+        }
+      }
+
       const compilationSettings = merge(
         merge(this.DEFAULT_OPTIONS, projectConfig),
         this.MUST_OVERWRITE_OPTIONS
       );
 
-      this.logger.info(
-        `compilationSettings:${JSON.stringify(compilationSettings)}`
-      );
       return compilationSettings;
     };
 
@@ -175,6 +239,7 @@ export class DenoPlugin implements ts_module.server.PluginModule {
         for (const typeDirectiveName of typeDirectiveNames) {
           const [resolvedModule] = resolver.resolveModules([typeDirectiveName]);
 
+          // if module found. then return the module file
           if (resolvedModule) {
             const target: ts_module.ResolvedTypeReferenceDirective = {
               primary: false,
@@ -185,6 +250,7 @@ export class DenoPlugin implements ts_module.server.PluginModule {
             continue;
           }
 
+          // If the module does not exist, then apply the native reference method
           const [target] = resolveTypeReferenceDirectives(
             [typeDirectiveName],
             containingFile,
@@ -293,8 +359,8 @@ export class DenoPlugin implements ts_module.server.PluginModule {
               // text is always unix style
               const text = source.text;
 
-              const absoluteFilepath = path.posix.resolve(
-                path.dirname(fileName),
+              const absoluteFilepath = path.resolve(
+                normalizeFilepath(path.dirname(fileName)),
                 normalizeFilepath(text)
               );
 
@@ -305,7 +371,7 @@ export class DenoPlugin implements ts_module.server.PluginModule {
                 );
 
                 if (denoCache) {
-                  source.text = denoCache.url.href;
+                  source.text = denoCache.meta.url.href;
                 }
               }
             }
@@ -321,7 +387,11 @@ export class DenoPlugin implements ts_module.server.PluginModule {
         moduleNames: string[],
         containingFile: string,
         ...rest
-      ): (ts_module.ResolvedModule | undefined)[] => {
+      ): (
+        | ts_module.ResolvedModule
+        | ts_module.ResolvedModuleFull
+        | undefined
+      )[] => {
         if (!this.configurationManager.config.enable) {
           return resolveModuleNames(moduleNames, containingFile, ...rest);
         }
@@ -356,6 +426,28 @@ export class DenoPlugin implements ts_module.server.PluginModule {
           realContainingFile,
           importMapsFilepath
         );
+
+        const content = this.typescript.sys.readFile(containingFile, "utf8");
+
+        // handle @deno-types
+        if (content && content.indexOf("// @deno-types=") >= 0) {
+          const sourceFile = this.typescript.createSourceFile(
+            containingFile,
+            content,
+            this.typescript.ScriptTarget.ESNext,
+            true
+          );
+
+          const modules = getImportModules(this.typescript)(sourceFile);
+
+          for (const m of modules) {
+            if (m.hint) {
+              const index = moduleNames.findIndex((v) => v === m.moduleName);
+
+              moduleNames[index] = m.hint.text;
+            }
+          }
+        }
 
         const resolvedModules = resolver.resolveModules(moduleNames);
 
@@ -393,38 +485,23 @@ export class DenoPlugin implements ts_module.server.PluginModule {
           for (const m of modules) {
             if (m) {
               resolvedModule.origin = m.origin;
-              resolvedModule.module = m.module;
               resolvedModule.filepath = m.filepath;
             }
           }
         }
 
-        return resolveModuleNames(
-          resolvedModules.map((v, index) =>
-            v ? v.module : moduleNames[index]
-          ),
-          containingFile,
-          ...rest
-        ).map((v, index) => {
+        return resolvedModules.map((v) => {
           if (!v) {
-            const cacheModule = resolvedModules[index];
-            if (cacheModule) {
-              const moduleFilepath = cacheModule.filepath;
-              // import * as React from 'https://dev.jspm.io/react'
-              if (
-                path.isAbsolute(moduleFilepath) &&
-                pathExistsSync(moduleFilepath)
-              ) {
-                return {
-                  extension: this.typescript.Extension.Js,
-                  isExternalLibraryImport: false,
-                  resolvedFileName: moduleFilepath,
-                } as ts_module.ResolvedModuleFull;
-              }
-            }
+            return v;
           }
 
-          return v;
+          const result: ts_module.ResolvedModuleFull = {
+            extension: v.extension as ts_module.Extension,
+            isExternalLibraryImport: false,
+            resolvedFileName: v.filepath,
+          };
+
+          return result;
         });
       };
     }

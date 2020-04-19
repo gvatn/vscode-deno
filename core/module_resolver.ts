@@ -8,11 +8,12 @@ import { ImportMap } from "./import_map";
 import { HashMeta } from "./hash_meta";
 import { pathExistsSync, isHttpURL, hashURL, normalizeFilepath } from "./util";
 import { Logger } from "./logger";
+import { Extension, getExtensionFromFile } from "./extension";
 
 export type ResolvedModule = {
-  origin: string; // the origin resolve module
-  filepath: string; // full file name path. May be relative or absolute
-  module: string; // final resolve module. It may not have an extension
+  origin: string;
+  filepath: string;
+  extension: Extension;
 };
 
 export interface ModuleResolverInterface {
@@ -29,7 +30,7 @@ export class ModuleResolver implements ModuleResolverInterface {
    * @param containingFile Absolute file path
    * @param importMapsFile Absolute file path
    */
-  constructor(
+  private constructor(
     private containingFile: string,
     private importMapsFile?: string,
     private logger?: Logger
@@ -116,15 +117,14 @@ export class ModuleResolver implements ModuleResolverInterface {
       /* istanbul ignore else */
       if (typeModule) {
         typeModule.origin = httpModuleURL;
+        return typeModule;
       }
-
-      return typeModule;
     }
 
     return {
       origin: origin,
       filepath: moduleFilepath,
-      module: moduleFilepath,
+      extension: meta.extension,
     };
   }
 
@@ -148,7 +148,7 @@ export class ModuleResolver implements ModuleResolverInterface {
     return {
       origin: originModuleName,
       filepath: moduleFilepath,
-      module: moduleFilepath.replace(/(\.d)?\.(t|j)sx?$/, ""), // "./foo.ts" -> "./foo"
+      extension: getExtensionFromFile(moduleFilepath),
     };
   }
 
@@ -177,7 +177,7 @@ export class ModuleResolver implements ModuleResolverInterface {
           resolvedModules.push({
             origin: moduleName,
             filepath: moduleCacheFile.filepath,
-            module: moduleCacheFile.filepath,
+            extension: moduleCacheFile.extension,
           });
         } else {
           resolvedModules.push(undefined);

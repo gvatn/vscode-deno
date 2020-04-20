@@ -56,6 +56,10 @@
           "light": "resource/icon/refresh.light.svg",
           "dark": "resource/icon/refresh.dark.svg"
         }
+      },
+      {
+        "command": "deno.debugger.toggleSkippingFile",
+        "title": "%debugger.toggle.skipping.this.file%"
       }
     ],
     "views": {
@@ -83,6 +87,13 @@
         {
           "command": "deno.restart_server",
           "when": "denoExtensionActivated"
+        }
+      ],
+      "debug/callstack/context": [
+        {
+          "command": "deno.debugger.toggleSkippingFile",
+          "group": "navigation",
+          "when": "inDebugMode && debugType == 'deno' && callStackItemType == 'stackFrame'"
         }
       ]
     },
@@ -169,10 +180,9 @@
 		],
 		"debuggers": [
       {
-        "type": "node2",
-        "label": "Node.js v6.3+",
-        "program": "./out/src/nodeDebug.js",
-        "runtime": "node",
+        "type": "deno",
+        "label": "Deno debug",
+        "languages": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
         "configurationAttributes": {
           "launch": {
             "required": [
@@ -181,11 +191,11 @@
             "properties": {
               "program": {
                 "type": "string",
-                "description": "%node.launch.program.description%"
+                "description": "%debugger.launch.program.description%"
               },
               "stopOnEntry": {
                 "type": "boolean",
-                "description": "%node.stopOnEntry.description%",
+                "description": "%debugger.stopOnEntry.description%",
                 "default": true
               },
               "console": {
@@ -194,12 +204,12 @@
                   "integratedTerminal",
                   "externalTerminal"
                 ],
-                "description": "%node.launch.console.description%",
+                "description": "%debugger.launch.console.description%",
                 "default": "internalConsole"
               },
               "args": {
                 "type": "array",
-                "description": "%node.launch.args.description%",
+                "description": "%debugger.launch.args.description%",
                 "items": {
                   "type": "string"
                 },
@@ -207,12 +217,12 @@
               },
               "restart": {
                 "type": "boolean",
-                "description": "%node.restart.description%",
+                "description": "%debugger.restart.description%",
                 "default": true
               },
               "cwd": {
                 "type": "string",
-                "description": "%node.launch.cwd.description%",
+                "description": "%debugger.launch.cwd.description%",
                 "default": "${workspaceFolder}"
               },
               "runtimeExecutable": {
@@ -220,12 +230,12 @@
                   "string",
                   "null"
                 ],
-                "markdownDescription": "%node.launch.runtimeExecutable.description%",
+                "markdownDescription": "%debugger.launch.runtimeExecutable.description%",
                 "default": null
               },
               "runtimeArgs": {
                 "type": "array",
-                "description": "%node.launch.runtimeArgs.description%",
+                "description": "%debugger.launch.runtimeArgs.description%",
                 "items": {
                   "type": "string"
                 },
@@ -236,25 +246,17 @@
                 "additionalProperties": {
                   "type": "string"
                 },
-                "description": "%node.launch.env.description%",
+                "description": "%debugger.launch.env.description%",
                 "default": {}
               },
               "sourceMaps": {
                 "type": "boolean",
-                "description": "%node.sourceMaps.description%",
+                "description": "%debugger.sourceMaps.description%",
                 "default": true
-              },
-              "outDir": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "deprecationMessage": "%outDir.deprecationMessage%",
-                "default": null
               },
               "outFiles": {
                 "type": "array",
-                "description": "%node.outFiles.description%",
+                "description": "%debugger.outFiles.description%",
                 "items": {
                   "type": "string"
                 },
@@ -262,35 +264,23 @@
               },
               "port": {
                 "type": "number",
-                "description": "%node.port.description%",
+                "description": "%debugger.port.description%",
                 "default": 9229
               },
               "address": {
                 "type": "string",
-                "description": "%node.address.description%",
+                "description": "%debugger.address.description%",
                 "default": "localhost"
               },
               "timeout": {
                 "type": "number",
-                "description": "%node.timeout.description%",
+                "description": "%debugger.timeout.description%",
                 "default": 10000
               },
               "smartStep": {
                 "type": "boolean",
-                "description": "%node.smartStep.description%",
+                "description": "%debugger.smartStep.description%",
                 "default": true
-              },
-              "diagnosticLogging": {
-                "type": "boolean",
-                "description": "%node.diagnosticLogging.description%",
-                "default": true,
-                "deprecationMessage": "%node.diagnosticLogging.deprecationMessage%"
-              },
-              "verboseDiagnosticLogging": {
-                "type": "boolean",
-                "description": "%node.verboseDiagnosticLogging.description%",
-                "default": true,
-                "deprecationMessage": "%node.verboseDiagnosticLogging.deprecationMessage%"
               },
               "trace": {
                 "type": [
@@ -302,26 +292,26 @@
                   true
                 ],
                 "default": true,
-                "description": "%node.trace.description%"
+                "description": "%debugger.trace.description%"
               },
               "sourceMapPathOverrides": {
                 "type": "object",
-                "description": "%node.sourceMapPathOverrides.description%",
+                "description": "%debugger.sourceMapPathOverrides.description%",
                 "default": {}
               },
               "skipFiles": {
                 "type": "array",
-                "description": "%node.skipFiles.description%",
+                "description": "%debugger.skipFiles.description%",
                 "default": []
               },
               "envFile": {
                 "type": "string",
-                "description": "%node.launch.envFile.description%",
+                "description": "%debugger.launch.envFile.description%",
                 "default": "${workspaceFolder}/.env"
               },
               "showAsyncStacks": {
                 "type": "boolean",
-                "description": "%node.showAsyncStacks.description%",
+                "description": "%debugger.showAsyncStacks.description%",
                 "default": true
               },
               "outputCapture": {
@@ -329,17 +319,17 @@
                   "console",
                   "std"
                 ],
-                "description": "%node.launch.outputCapture.description%",
+                "description": "%debugger.launch.outputCapture.description%",
                 "default": "console"
               },
               "enableSourceMapCaching": {
                 "type": "boolean",
-                "description": "%node.enableSourceMapCaching.description%",
+                "description": "%debugger.enableSourceMapCaching.description%",
                 "default": true
               },
               "disableOptimisticBPs": {
                 "type": "boolean",
-                "description": "%node.disableOptimisticBPs.description%",
+                "description": "%debugger.disableOptimisticBPs.description%",
                 "default": true
               }
             }
@@ -348,40 +338,32 @@
             "properties": {
               "port": {
                 "type": "number",
-                "description": "%node.port.description%",
+                "description": "%debugger.port.description%",
                 "default": 9229
               },
               "address": {
                 "type": "string",
-                "description": "%node.address.description%",
+                "description": "%debugger.address.description%",
                 "default": "localhost"
               },
               "timeout": {
                 "type": "number",
-                "description": "%node.timeout.description%",
+                "description": "%debugger.timeout.description%",
                 "default": 10000
               },
               "restart": {
                 "type": "boolean",
-                "description": "%node.restart.description%",
+                "description": "%debugger.restart.description%",
                 "default": true
               },
               "sourceMaps": {
                 "type": "boolean",
-                "description": "%node.sourceMaps.description%",
+                "description": "%debugger.sourceMaps.description%",
                 "default": true
-              },
-              "outDir": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "deprecationMessage": "%outDir.deprecationMessage%",
-                "default": null
               },
               "outFiles": {
                 "type": "array",
-                "description": "%node.outFiles.description%",
+                "description": "%debugger.outFiles.description%",
                 "items": {
                   "type": "string"
                 },
@@ -389,7 +371,7 @@
               },
               "stopOnEntry": {
                 "type": "boolean",
-                "description": "%node.stopOnEntry.description%",
+                "description": "%debugger.stopOnEntry.description%",
                 "default": true
               },
               "localRoot": {
@@ -397,7 +379,7 @@
                   "string",
                   "null"
                 ],
-                "description": "%node.attach.localRoot.description%",
+                "description": "%debugger.attach.localRoot.description%",
                 "default": null
               },
               "remoteRoot": {
@@ -405,25 +387,13 @@
                   "string",
                   "null"
                 ],
-                "description": "%node.attach.remoteRoot.description%",
+                "description": "%debugger.attach.remoteRoot.description%",
                 "default": null
               },
               "smartStep": {
                 "type": "boolean",
-                "description": "%node.smartStep.description%",
+                "description": "%debugger.smartStep.description%",
                 "default": true
-              },
-              "diagnosticLogging": {
-                "type": "boolean",
-                "description": "%node.diagnosticLogging.description%",
-                "default": true,
-                "deprecationMessage": "%node.diagnosticLogging.deprecationMessage%"
-              },
-              "verboseDiagnosticLogging": {
-                "type": "boolean",
-                "description": "%node.verboseDiagnosticLogging.description%",
-                "default": true,
-                "deprecationMessage": "%node.verboseDiagnosticLogging.deprecationMessage%"
               },
               "trace": {
                 "type": [
@@ -435,67 +405,36 @@
                   true
                 ],
                 "default": true,
-                "description": "%node.trace.description%"
+                "description": "%debugger.trace.description%"
               },
               "sourceMapPathOverrides": {
                 "type": "object",
-                "description": "%node.sourceMapPathOverrides.description%",
+                "description": "%debugger.sourceMapPathOverrides.description%",
                 "default": {}
               },
               "skipFiles": {
                 "type": "array",
-                "description": "%node.skipFiles.description%",
+                "description": "%debugger.skipFiles.description%",
                 "default": []
               },
               "showAsyncStacks": {
                 "type": "boolean",
-                "description": "%node.showAsyncStacks.description%",
+                "description": "%debugger.showAsyncStacks.description%",
                 "default": true
               },
               "enableSourceMapCaching": {
                 "type": "boolean",
-                "description": "%node.enableSourceMapCaching.description%",
+                "description": "%debugger.enableSourceMapCaching.description%",
                 "default": true
               },
               "disableOptimisticBPs": {
                 "type": "boolean",
-                "description": "%node.disableOptimisticBPs.description%",
+                "description": "%debugger.disableOptimisticBPs.description%",
                 "default": true
               }
             }
           }
-        }
-      },
-			{
-				"type": "deno",
-				"label": "Deno Debug",
-				"program": "./client/out/client/src/debugAdapter.js",
-        "runtime": "node",
-        "languages": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-				"configurationAttributes": {
-					"launch": {
-						"required": [
-							"program"
-						],
-						"properties": {
-							"program": {
-								"type": "string",
-								"description": "Absolute path to a text file.",
-								"default": "${workspaceFolder}/${command:AskForProgramName}"
-							},
-							"stopOnEntry": {
-								"type": "boolean",
-								"description": "Automatically stop after launch.",
-								"default": true
-							},
-							"trace": {
-								"type": "boolean",
-								"description": "Enable logging of the Debug Adapter Protocol.",
-								"default": true
-							}
-						}
-					}
-				},
+        },
 				"initialConfigurations": [
 					{
 						"type": "deno",

@@ -6,6 +6,7 @@
     "await-notify": "^1.0.1",
     "execa": "4.0.0",
     "get-port": "5.1.1",
+    "vscode-chrome-debug-core": "^6.8.8",
     "vscode-debugadapter": "1.40.0-pre.1",
     "vscode-debugprotocol": "1.40.0-pre.0",
     "vscode-languageclient": "6.1.3"

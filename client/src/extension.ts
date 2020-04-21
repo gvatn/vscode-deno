@@ -49,7 +49,7 @@ import { TreeViewProvider } from "./tree_view_provider";
 
 import { ImportMap } from "../../core/import_map";
 import { HashMeta } from "../../core/hash_meta";
-import { isInDeno } from "../../core/deno";
+import { isInDeno, getDenoDir } from "../../core/deno";
 import { isValidDenoDocument } from "../../core/util";
 import { Request, Notification } from "../../core/const";
 
@@ -143,7 +143,7 @@ class ExtensionHostDebugConfigurationProvider
    * e.g. add all missing attributes to the debug configuration.
    */
   resolveDebugConfiguration(
-    _folder: WorkspaceFolder | undefined,
+    folder: WorkspaceFolder | undefined,
     config: DebugConfiguration,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _token?: CancellationToken
@@ -172,7 +172,18 @@ class ExtensionHostDebugConfigurationProvider
         config.name = "Launch";
         config.request = "launch";
         config.program = "${file}";
+        config.cwd = "${workspaceFolder}";
         config.stopOnEntry = true;
+        // Resolve outFiles
+        if (folder?.uri.scheme === "file") {
+          // path or fsPath?
+          config.outFiles = [
+            `${getDenoDir()}/gen/file${folder.uri.path}/**/*.ts.js`,
+          ];
+        } else {
+          // todo
+          throw "Only file implemented";
+        }
       }
     }
 

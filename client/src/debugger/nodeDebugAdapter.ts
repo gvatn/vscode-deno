@@ -454,7 +454,7 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
         launchArgs.push("--debug-brk");
       } else {
         // todo: Did deno need both --inspect and this?
-        launchArgs.push(`--inspect-brk=${port}`);
+        launchArgs.push(`--inspect-brk=127.0.0.1:${port}`);
       }
     }
 
@@ -1308,6 +1308,9 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
   }
 
   private isExtensionHost(): boolean {
-    return this._adapterID === "deno";
+    return (
+      this._adapterID === "extensionHost2" ||
+      this._adapterID === "extensionHost"
+    );
   }
 }

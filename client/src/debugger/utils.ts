@@ -25,7 +25,7 @@ export class JavaScriptDeterminant {
     const matchesPattern = [
       ...JavaScriptDeterminant.defaultPatterns,
       ...this.customPatterns,
-    ].some((pattern) => match(basename, pattern, { nocase: true }));
+    ].some((pattern) => match.default(basename, pattern, { nocase: true }));
 
     return matchesPattern || this.isShebang(aPath);
   }

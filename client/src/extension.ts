@@ -1,6 +1,6 @@
 import * as path from "path";
 import { promises as fs } from "fs";
-import * as Net from "net";
+//import * as Net from "net";
 
 import {
   workspace,
@@ -29,9 +29,9 @@ import {
   ProviderResult,
   CancellationToken,
   DebugSession,
-  DebugAdapterExecutable,
+  //DebugAdapterExecutable,
   DebugAdapterDescriptor,
-  DebugAdapterServer,
+  //DebugAdapterServer,
   DebugAdapterInlineImplementation,
 } from "vscode";
 import {
@@ -43,7 +43,6 @@ import {
 import getport from "get-port";
 import execa from "execa";
 import { init, localize } from "vscode-nls-i18n";
-import { MockDebugSession } from "./mockDebug";
 import * as semver from "semver";
 
 import { TreeViewProvider } from "./tree_view_provider";
@@ -54,6 +53,14 @@ import { isInDeno } from "../../core/deno";
 import { isValidDenoDocument } from "../../core/util";
 import { Request, Notification } from "../../core/const";
 
+import * as ChromeDebugCore from "vscode-chrome-debug-core";
+
+// For debug session object. Could factor to some other file
+import * as os from "os";
+import { NodeDebugAdapter } from "./debugger/nodeDebugAdapter";
+import { NodeBreakpoints } from "./debugger/nodeBreakpoints";
+import { NodeScriptContainer } from "./debugger/nodeScripts";
+
 const TYPESCRIPT_EXTENSION_NAME = "vscode.typescript-language-features";
 const TYPESCRIPT_DENO_PLUGIN_ID = "typescript-deno-plugin";
 
@@ -61,7 +68,7 @@ const TYPESCRIPT_DENO_PLUGIN_ID = "typescript-deno-plugin";
  * The compile time flag 'runMode' controls how the debug adapter is run.
  * Please note: the test suite only supports 'external' mode.
  */
-const runMode: "external" | "server" | "inline" = "inline";
+//const runMode: "external" | "server" | "inline" = "inline";
 
 type SynchronizedConfiguration = {
   enable?: boolean;
@@ -114,7 +121,23 @@ async function getTypescriptAPI(): Promise<TypescriptAPI> {
   return api;
 }
 
-class MockConfigurationProvider implements DebugConfigurationProvider {
+function toggleSkippingFile(path: string | number): void {
+  if (!path) {
+    const activeEditor = window.activeTextEditor;
+    if (activeEditor) {
+      path = activeEditor.document.fileName;
+    }
+  }
+
+  if (path && debug.activeDebugSession) {
+    const args: ChromeDebugCore.IToggleSkipFileStatusArgs =
+      typeof path === "string" ? { path } : { sourceReference: path };
+    debug.activeDebugSession.customRequest("toggleSkipFileStatus", args);
+  }
+}
+
+class ExtensionHostDebugConfigurationProvider
+  implements DebugConfigurationProvider {
   /**
    * Massage a debug configuration just before a debug session is being launched,
    * e.g. add all missing attributes to the debug configuration.
@@ -125,6 +148,16 @@ class MockConfigurationProvider implements DebugConfigurationProvider {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _token?: CancellationToken
   ): ProviderResult<DebugConfiguration> {
+    // This is for https://github.com/microsoft/vscode-js-debug
+    const useV3 =
+      workspace.getConfiguration().get("debug.extensionHost.useV3", false) ||
+      workspace.getConfiguration().get("debug.javascript.usePreview", false);
+
+    if (useV3) {
+      config["__workspaceFolder"] = "${workspaceFolder}";
+      config.type = "pwa-extensionHost";
+    }
+
     // if launch.json is missing or empty
     if (!config.type && !config.request && !config.name) {
       const editor = window.activeTextEditor;
@@ -158,70 +191,32 @@ class MockConfigurationProvider implements DebugConfigurationProvider {
   }
 }
 
-class DebugAdapterExecutableFactory implements DebugAdapterDescriptorFactory {
-  // The following use of a DebugAdapter factory shows how to control what debug adapter executable is used.
-  // Since the code implements the default behavior, it is absolutely not neccessary and we show it here only for educational purpose.
-
-  createDebugAdapterDescriptor(
-    _session: DebugSession,
-    executable: DebugAdapterExecutable | undefined
-  ): ProviderResult<DebugAdapterDescriptor> {
-    // param "executable" contains the executable optionally specified in the package.json (if any)
-
-    // use the executable specified in the package.json if it exists or determine it based on some other information (e.g. the session)
-    if (!executable) {
-      const command = "absolute path to my DA executable";
-      const args = ["some args", "another arg"];
-      const options = {
-        cwd: "working directory for executable",
-        env: { VAR: "some value" },
-      };
-      executable = new DebugAdapterExecutable(command, args, options);
-    }
-
-    // make VS Code launch the DA executable
-    return executable;
+// Note that originally this was started with ChromeDebugSession.run() (on a base class)
+class ChromeDebugSessionCustom extends ChromeDebugCore.ChromeDebugSession {
+  constructor() {
+    super(false, false, {
+      logFilePath: path.join(os.tmpdir(), "vscode-deno-debugger.txt"), // non-.txt file types can't be uploaded to github
+      adapter: NodeDebugAdapter,
+      extensionName: "vscode-deno",
+      breakpoints: NodeBreakpoints,
+      scriptContainer: NodeScriptContainer,
+    });
   }
 }
 
-class MockDebugAdapterDescriptorFactory
-  implements DebugAdapterDescriptorFactory {
-  private server?: Net.Server;
-
-  createDebugAdapterDescriptor(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _session: DebugSession,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _executable: DebugAdapterExecutable | undefined
-  ): ProviderResult<DebugAdapterDescriptor> {
-    if (!this.server) {
-      // start listening on a random port
-      this.server = Net.createServer((socket) => {
-        const session = new MockDebugSession();
-        session.setRunAsServer(true);
-        session.start(socket as NodeJS.ReadableStream, socket);
-      }).listen(0);
-    }
-
-    // make VS Code connect to debug server
-    return new DebugAdapterServer(
-      (this.server.address() as Net.AddressInfo).port
-    );
-  }
-
-  dispose() {
-    if (this.server) {
-      this.server.close();
-    }
-  }
-}
-
+// Going for the inline for now.
+// Assuming this will start up a little faster, be a little easier to manage,
+// but without the runtime performance gains of parallelism. Not sure how much
+// performance is affected in practice. Also interesting if there is
+// gains with interoperability.
+// Possibly during development it's easier to debug the debugger this way.
 class InlineDebugAdapterFactory implements DebugAdapterDescriptorFactory {
   createDebugAdapterDescriptor(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _session: DebugSession
   ): ProviderResult<DebugAdapterDescriptor> {
-    return new DebugAdapterInlineImplementation(new MockDebugSession());
+    //return new DebugAdapterInlineImplementation(new MockDebugSession());
+    return new DebugAdapterInlineImplementation(new ChromeDebugSessionCustom());
   }
 }
 
@@ -619,30 +614,13 @@ Executable ${this.denoInfo.executablePath}`;
     });
 
     // register a configuration provider for 'deno' debug type
-    const provider = new MockConfigurationProvider();
+    const provider = new ExtensionHostDebugConfigurationProvider();
     context.subscriptions.push(
       debug.registerDebugConfigurationProvider("deno", provider)
     );
 
     // debug adapters can be run in different ways by using a vscode.DebugAdapterDescriptorFactory:
-    let factory: DebugAdapterDescriptorFactory;
-    switch (runMode) {
-      case "server":
-        // run the debug adapter as a server inside the extension and communicating via a socket
-        factory = new MockDebugAdapterDescriptorFactory();
-        break;
-
-      case "inline":
-        // run the debug adapter inside the extension and directly talk to it
-        factory = new InlineDebugAdapterFactory();
-        break;
-
-      case "external":
-      default:
-        // run the debug adapter as a separate process
-        factory = new DebugAdapterExecutableFactory();
-        break;
-    }
+    const factory: DebugAdapterDescriptorFactory = new InlineDebugAdapterFactory();
 
     context.subscriptions.push(
       debug.registerDebugAdapterDescriptorFactory("deno", factory)
@@ -650,6 +628,12 @@ Executable ${this.denoInfo.executablePath}`;
     if ("dispose" in factory) {
       context.subscriptions.push(factory);
     }
+    context.subscriptions.push(
+      commands.registerCommand(
+        "deno.debugger.toggleSkippingFile",
+        toggleSkippingFile
+      )
+    );
 
     // override VS Code's default implementation of the debug hover
     /*

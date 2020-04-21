@@ -18,7 +18,7 @@ export function makePathAbsolute(absPath: string, relPath: string): string {
  * Remove the first segment of the given path and return the result.
  * The input path must use the path syntax of the underlying operating system.
  */
-export function removeFirstSegment(path: string): string {
+export function removeFirstSegment(path: string): string | null {
   const segments = path.split(Path.sep);
   segments.shift();
   if (segments.length > 0) {
@@ -53,7 +53,7 @@ export function makeRelative(target: string, path: string): string {
 export function normalizeDriveLetter(path: string): string {
   const regex = /^([A-Z])(:[\\/].*)$/;
   if (regex.test(path)) {
-    path = path.replace(regex, (s, s1, s2) => s1.toLowerCase() + s2);
+    path = path.replace(regex, (_s, s1, s2) => s1.toLowerCase() + s2);
   }
   return path;
 }
@@ -70,7 +70,7 @@ export function pathCompare(path1: string, path2: string): boolean {
  * realPath does not handle '..' or '.' path segments and it does not take the locale into account.
  * Since a drive letter of a Windows path cannot be looked up, realPath normalizes the drive letter to lower case.
  */
-export function realCasePath(path: string): string {
+export function realCasePath(path: string): string | null {
   const dir = Path.dirname(path);
   if (path === dir) {
     // end recursion

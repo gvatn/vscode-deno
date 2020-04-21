@@ -16,7 +16,7 @@ import { NodeScriptContainer } from "./nodeScripts";
 
 ChromeDebugSession.run(
   ChromeDebugSession.getSession({
-    logFilePath: path.join(os.tmpdir(), "vscode-node-debug2.txt"), // non-.txt file types can't be uploaded to github
+    logFilePath: path.join(os.tmpdir(), "vscode-deno-debugger.txt"), // non-.txt file types can't be uploaded to github
     adapter: NodeDebugAdapter,
     extensionName: "node-debug2",
     breakpoints: NodeBreakpoints,

@@ -11,12 +11,12 @@ export function subsystemForLinuxPresent(): boolean {
   }
 
   const bashPath32bitApp = path.join(
-    process.env["SystemRoot"],
+    process.env["SystemRoot"] || "",
     "Sysnative",
     "bash.exe"
   );
   const bashPath64bitApp = path.join(
-    process.env["SystemRoot"],
+    process.env["SystemRoot"] || "",
     "System32",
     "bash.exe"
   );
@@ -24,7 +24,9 @@ export function subsystemForLinuxPresent(): boolean {
   return fs.existsSync(bashPathHost);
 }
 
-function windowsPathToWSLPath(windowsPath: string): string {
+function windowsPathToWSLPath(
+  windowsPath: string | undefined
+): string | undefined {
   if (!isWindows || !windowsPath) {
     return undefined;
   } else if (path.isAbsolute(windowsPath)) {
@@ -50,17 +52,17 @@ export function createLaunchArg(
   useExternalConsole: boolean,
   cwd: string | undefined,
   executable: string,
-  args?: string[],
+  args: readonly string[],
   program?: string
 ): LaunchArgs {
   if (useSubsytemLinux && subsystemForLinuxPresent()) {
     const bashPath32bitApp = path.join(
-      process.env["SystemRoot"],
+      process.env["SystemRoot"] || "",
       "Sysnative",
       "bash.exe"
     );
     const bashPath64bitApp = path.join(
-      process.env["SystemRoot"],
+      process.env["SystemRoot"] || "",
       "System32",
       "bash.exe"
     );
@@ -100,8 +102,8 @@ export function createLaunchArg(
 export function spawn(
   useWSL: boolean,
   executable: string,
-  args?: string[],
-  options?: child_process.SpawnOptions
+  args: readonly string[],
+  options: child_process.SpawnOptions
 ) {
   const launchArgs = createLaunchArg(
     useWSL,
@@ -116,7 +118,7 @@ export function spawn(
 export function spawnSync(
   useWSL: boolean,
   executable: string,
-  args?: string[],
+  args: readonly string[],
   options?: child_process.SpawnSyncOptions
 ) {
   const launchArgs = createLaunchArg(

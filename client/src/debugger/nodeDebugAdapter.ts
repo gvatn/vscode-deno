@@ -68,8 +68,9 @@ const defaultDebugArgs = DebugArgs.InspectBrk;
 function detectSupportedDebugArgsForLaunch(
   config: LaunchRequestArguments,
   runtimeExecutable: string,
-  env: any
+  _env: any
 ): DebugArgs {
+  return DebugArgs.InspectBrk;
   if (
     config.__nodeVersion ||
     (config.runtimeVersion && config.runtimeVersion !== "default")
@@ -150,7 +151,7 @@ function getSourceMapPathOverrides(
 }
 
 const internalsRegex = new RegExp(`^"<node_internals>"/(.*)`);
-function fixNodeInternalsSkipFilePattern(pattern: string): string {
+function fixNodeInternalsSkipFilePattern(pattern: string): string | null {
   const internalsMatch = pattern.match(internalsRegex);
   if (internalsMatch) {
     return `^(?!/)(?![a-zA-Z]:)(?!file:///)${CoreUtils.pathGlobToBlackboxedRegex(
@@ -167,6 +168,9 @@ function fixNodeInternalsSkipFiles(args: CommonRequestArgs): void {
     args.skipFiles = args.skipFiles.filter((pattern) => {
       const fixed = fixNodeInternalsSkipFilePattern(pattern);
       if (fixed) {
+        if (!args.skipFileRegExps) {
+          args.skipFileRegExps = [];
+        }
         args.skipFileRegExps.push(fixed);
         return false;
       } else {
@@ -194,32 +198,33 @@ export class ProcessEvent extends Event implements DebugProtocol.ProcessEvent {
   }
 }
 export class NodeDebugAdapter extends ChromeDebugAdapter {
-  private static NODE = "node";
+  private static NODE = "deno";
   private static RUNINTERMINAL_TIMEOUT = 5000;
   private static NODE_TERMINATION_POLL_INTERVAL = 3000;
   private static DEBUG_BRK_DEP_MSG = /\(node:\d+\) \[DEP0062\] DeprecationWarning: `node --inspect --debug-brk` is deprecated\. Please use `node --inspect-brk` instead\.\s*/;
 
   public static NODE_INTERNALS = "<node_internals>";
 
-  protected _launchAttachArgs: CommonRequestArgs;
+  // todo: Not sure where these come from. Added (!) to work around strictPropertyInitialization
+  protected _launchAttachArgs!: CommonRequestArgs;
 
   private _jsDeterminant = new utils.JavaScriptDeterminant();
-  private _loggedTargetVersion: boolean;
-  private _nodeProcessId: number;
-  private _pollForNodeProcess: boolean;
+  private _loggedTargetVersion!: boolean;
+  private _nodeProcessId!: number;
+  private _pollForNodeProcess!: boolean;
 
   // Flags relevant during init
   private _continueAfterConfigDone = true;
-  private _entryPauseEvent: Crdp.Debugger.PausedEvent;
+  private _entryPauseEvent!: Crdp.Debugger.PausedEvent;
   private _waitingForEntryPauseEvent = true;
   private _finishedConfig = false;
   private _handlingEarlyNodeMsgs = true;
   private _captureFromStd = false;
 
-  private _supportsRunInTerminalRequest: boolean;
-  private _restartMode: boolean;
-  private _isTerminated: boolean;
-  private _adapterID: string;
+  private _supportsRunInTerminalRequest!: boolean;
+  private _restartMode!: boolean;
+  private _isTerminated!: boolean;
+  private _adapterID!: string;
 
   get entryPauseEvent(): Crdp.Debugger.PausedEvent | undefined {
     return this._entryPauseEvent;
@@ -281,7 +286,8 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
   ): DebugProtocol.Capabilities {
     this._adapterID = args.adapterID;
     this._promiseRejectExceptionFilterEnabled = this.isExtensionHost();
-    this._supportsRunInTerminalRequest = args.supportsRunInTerminalRequest;
+    this._supportsRunInTerminalRequest =
+      args.supportsRunInTerminalRequest || false;
 
     if (args.locale) {
       localize = nls.config({ locale: args.locale })();
@@ -405,9 +411,9 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
 
     const resolvedProgramPath = await this.resolveProgramPath(
       programPath,
-      args.sourceMaps
+      args.sourceMaps || false
     );
-    let program: string;
+    let program: string | undefined;
     let cwd = args.cwd;
     if (cwd) {
       if (!path.isAbsolute(cwd)) {
@@ -440,13 +446,14 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
       runtimeExecutable,
       args.env
     );
-    let launchArgs = [];
+    let launchArgs: string[] = [];
     if (!args.noDebug && !args.port) {
       // Always stop on entry to set breakpoints
       if (debugArgs === DebugArgs.Inspect_DebugBrk) {
         launchArgs.push(`--inspect=${port}`);
         launchArgs.push("--debug-brk");
       } else {
+        // todo: Did deno need both --inspect and this?
         launchArgs.push(`--inspect-brk=${port}`);
       }
     }
@@ -518,6 +525,9 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
     debugPort: number
   ): Promise<void> {
     // Separate all "paths" from an arguments into separate attributes.
+    if (!launchArgs.args) {
+      launchArgs.args = [];
+    }
     const args = launchArgs.args.map<LaunchVSCodeArgument>((arg) => {
       if (arg.startsWith("-")) {
         // arg is an option
@@ -568,7 +578,11 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
             }
             resolve();
           } else {
-            reject(errors.cannotDebugExtension(response.message));
+            reject(
+              errors.cannotDebugExtension(
+                response.message || "Cannot debug extension"
+              )
+            );
             this.terminateSession("launchVSCode error: " + response.message);
           }
         }
@@ -597,6 +611,9 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
   }
 
   protected commonArgs(args: CommonRequestArgs): void {
+    if (!args.cwd) {
+      throw "Expecting cwd";
+    }
     args.sourceMapPathOverrides = getSourceMapPathOverrides(
       args.cwd,
       args.sourceMapPathOverrides
@@ -608,7 +625,7 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
         ? !this._isVSClient
         : args.smartStep;
 
-    this._restartMode = args.restart;
+    this._restartMode = args.restart || false;
     super.commonArgs(args);
   }
 
@@ -665,7 +682,11 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
             this._pollForNodeProcess = true;
             resolve();
           } else {
-            reject(errors.cannotLaunchInTerminal(response.message));
+            reject(
+              errors.cannotLaunchInTerminal(
+                response.message || "Error launch in terminal"
+              )
+            );
             this.terminateSession("terminal error: " + response.message);
           }
         }
@@ -727,7 +748,7 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
           this.terminateSession(msg);
         }
       });
-      nodeProcess.on("close", (code) => {
+      nodeProcess.on("close", (_code) => {
         const msg = "Target closed";
         logger.log(msg);
         if (!this.isExtensionHost()) {
@@ -738,9 +759,12 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
       const noDebugMode = (this._launchAttachArgs as LaunchRequestArguments)
         .noDebug;
 
-      this.captureStderr(nodeProcess, noDebugMode);
+      this.captureStderr(nodeProcess, noDebugMode || false);
 
       // Must attach a listener to stdout or process will hang on Windows
+      if (nodeProcess.stdout === null) {
+        throw "Expecting stdout on process";
+      }
       nodeProcess.stdout.on("data", (data: string) => {
         if (
           (noDebugMode || this._captureFromStd) &&
@@ -759,6 +783,9 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
     nodeProcess: cp.ChildProcess,
     noDebugMode: boolean
   ): void {
+    if (nodeProcess.stderr === null) {
+      throw "Attempt to capture missing stderr";
+    }
     nodeProcess.stderr.on("data", (data: string) => {
       let msg = data.toString();
       let isLastEarlyNodeMsg = false;
@@ -876,7 +903,7 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
     // So tell the target to continue, or tell the client that we paused, as needed
     this._finishedConfig = true;
     if (this._continueAfterConfigDone) {
-      this._expectingStopReason = undefined;
+      this._expectingStopReason = undefined as any;
       await this.continue(/*internal=*/ true);
     } else if (this._entryPauseEvent) {
       await this.onPaused(this._entryPauseEvent);
@@ -902,7 +929,7 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
   }
 
   public async terminate(
-    args: DebugProtocol.TerminateArguments
+    _args: DebugProtocol.TerminateArguments
   ): Promise<void> {
     this._clientRequestedSessionEnd = true;
     if (
@@ -1281,9 +1308,6 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
   }
 
   private isExtensionHost(): boolean {
-    return (
-      this._adapterID === "extensionHost2" ||
-      this._adapterID === "extensionHost"
-    );
+    return this._adapterID === "deno";
   }
 }

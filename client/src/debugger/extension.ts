@@ -8,7 +8,9 @@ import * as Core from "vscode-chrome-debug-core";
 function toggleSkippingFile(path: string | number): void {
   if (!path) {
     const activeEditor = vscode.window.activeTextEditor;
-    path = activeEditor && activeEditor.document.fileName;
+    if (activeEditor) {
+      path = activeEditor.document.fileName;
+    }
   }
 
   if (path && vscode.debug.activeDebugSession) {

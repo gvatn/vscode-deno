@@ -60,6 +60,7 @@ import * as os from "os";
 import { NodeDebugAdapter } from "./debugger/nodeDebugAdapter";
 import { NodeBreakpoints } from "./debugger/nodeBreakpoints";
 import { NodeScriptContainer } from "./debugger/nodeScripts";
+import { logger } from "vscode-debugadapter";
 
 const TYPESCRIPT_EXTENSION_NAME = "vscode.typescript-language-features";
 const TYPESCRIPT_DENO_PLUGIN_ID = "typescript-deno-plugin";
@@ -173,17 +174,21 @@ class ExtensionHostDebugConfigurationProvider
         config.request = "launch";
         config.program = "${file}";
         config.cwd = "${workspaceFolder}";
-        config.stopOnEntry = true;
-        // Resolve outFiles
-        if (folder?.uri.scheme === "file") {
-          // path or fsPath?
-          config.outFiles = [
-            `${getDenoDir()}/gen/file${folder.uri.path}/**/*.ts.js`,
-          ];
-        } else {
-          // todo
-          throw "Only file implemented";
-        }
+      }
+    }
+
+    // Add standard deno outFiles directory
+    if (!config.outFiles) {
+      // Resolve outFiles
+      if (folder?.uri.scheme === "file") {
+        // path or fsPath?
+        config.outFiles = [
+          `${getDenoDir()}/gen/file${folder.uri.path}/**/*.ts.js`,
+        ];
+        delete config.outFiles;
+      } else {
+        // todo
+        throw "Only file implemented";
       }
     }
 
@@ -212,6 +217,19 @@ class ChromeDebugSessionCustom extends ChromeDebugCore.ChromeDebugSession {
       breakpoints: NodeBreakpoints,
       scriptContainer: NodeScriptContainer,
     });
+
+    //this.setDebuggerLinesStartAt1(true);
+    //this.setDebuggerColumnsStartAt1(false);
+
+    // Setting log level
+    logger.init(
+      (x) => {
+        console.log(x);
+      },
+      "/home/gudmund/debuglog.txt",
+      true
+    );
+    //logger.setup(Logger.LogLevel.Verbose, false);
   }
 }
 
@@ -609,19 +627,6 @@ Executable ${this.denoInfo.executablePath}`;
     this.registerCommand("_copy_text", async (text: string) => {
       await env.clipboard.writeText(text);
       await window.showInformationMessage(`Copied to clipboard.`);
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    this.registerCommand("debug.getProgramName", async (_config) => {
-      const value = await window.showInputBox({
-        placeHolder:
-          "Please enter the name of a markdown file in the workspace folder",
-        value: "README.md",
-      });
-
-      if (value) {
-        return value;
-      }
     });
 
     // register a configuration provider for 'deno' debug type

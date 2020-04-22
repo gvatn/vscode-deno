@@ -31,8 +31,7 @@
     "onLanguage:javascriptreact",
     "onLanguage:typescript",
     "onLanguage:typescriptreact",
-    "onDebug",
-		"onCommand:deno.debug.getProgramName"
+    "onDebug"
   ],
   "main": "./client/out/client/src/extension.js",
   "contributes": {
@@ -181,7 +180,7 @@
 		"debuggers": [
       {
         "type": "deno",
-        "label": "Deno debug",
+        "label": "Deno",
         "languages": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
         "configurationAttributes": {
           "launch": {
@@ -439,27 +438,24 @@
 					{
 						"type": "deno",
 						"request": "launch",
-						"name": "Ask for file name",
-						"program": "${workspaceFolder}/${command:AskForProgramName}",
-						"stopOnEntry": true
+						"name": "Deno debug current file",
+						"program": "${file}",
+            "cwd": "${workspaceFolder}"
 					}
 				],
 				"configurationSnippets": [
 					{
-						"label": "Deno Debug: Launch",
-						"description": "A new configuration for 'debugging' a user selected markdown file.",
+						"label": "Deno: Launch",
+						"description": "A template for deno debug configuration.",
 						"body": {
 							"type": "deno",
 							"request": "launch",
-							"name": "Ask for file name",
-							"program": "^\"\\${workspaceFolder}/\\${command:AskForProgramName}\"",
-							"stopOnEntry": true
+              "name": "Deno debug current file",
+							"program": "${file}",
+              "cwd": "${workspaceFolder}"
 						}
 					}
-				],
-				"variables": {
-					"AskForProgramName": "deno.debug.getProgramName"
-				}
+				]
 			}
 		]
   },

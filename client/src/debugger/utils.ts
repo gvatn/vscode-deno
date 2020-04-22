@@ -13,7 +13,13 @@ const NODE_SHEBANG_MATCHER = new RegExp("#! */usr/bin/env +node");
  * Checks whether a file is a loadable JavaScript file.
  */
 export class JavaScriptDeterminant {
-  private static readonly defaultPatterns = ["*.js", "*.es6", "*.jsx", "*.mjs"];
+  private static readonly defaultPatterns = [
+    "*.js",
+    "*.es6",
+    "*.jsx",
+    "*.mjs",
+    "*.ts",
+  ];
   private customPatterns: ReadonlyArray<string> = [];
 
   public updatePatterns(patterns: ReadonlyArray<string>) {

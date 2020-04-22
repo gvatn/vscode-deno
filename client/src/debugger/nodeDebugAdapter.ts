@@ -453,14 +453,21 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
         launchArgs.push(`--inspect=${port}`);
         launchArgs.push("--debug-brk");
       } else {
-        // todo: Did deno need both --inspect and this?
         launchArgs.push(`--inspect-brk=127.0.0.1:${port}`);
       }
     }
 
+    // I think we want to pass original programPath and not
+    // the resolved compiled js
+    /*
     launchArgs = runtimeArgs.concat(
       launchArgs,
       program ? [program] : [],
+      programArgs
+    );*/
+    launchArgs = runtimeArgs.concat(
+      launchArgs,
+      programPath ? [programPath] : [],
       programArgs
     );
 
@@ -655,6 +662,11 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
       websocketUrl,
       extraCRDPChannelPort
     );
+    /*
+    const client = this._chromeConnection._client as any;
+    client.setLogging({
+      logConsole: true
+    });*/
     this.beginWaitingForDebuggerPaused();
     this.getNodeProcessDetailsIfNeeded();
 
@@ -1120,11 +1132,12 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
     }
 
     const response = await this.chrome.Runtime.evaluate({
-      expression: "[process.pid, process.version, process.arch]",
+      // originally: expression: "[process.pid, process.version, process.arch]",
+      expression: "[Deno.pid, Deno.version]",
       returnByValue: true,
       contextId: 1,
     }).catch((error) =>
-      logger.error("Error evaluating `process.pid`: " + error.message)
+      logger.error("Error evaluating `Deno.pid`: " + error.message)
     );
 
     if (!response) {
@@ -1146,15 +1159,15 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
         );
       } else {
         logger.log(
-          "Exception evaluating `process.pid`: " +
+          "Exception evaluating `Deno.pid`: " +
             description +
             ". Will try again later."
         );
       }
     } else {
-      const [pid, version, arch] = response.result.value;
+      const [pid, version] = response.result.value;
       if (typeof pid !== "number") {
-        logger.log(`Node returned a pid of ${pid}. Will try again later.`);
+        logger.log(`Deno returned a pid of ${pid}. Will try again later.`);
         return;
       }
 
@@ -1167,7 +1180,11 @@ export class NodeDebugAdapter extends ChromeDebugAdapter {
       }
 
       this._loggedTargetVersion = true;
-      logger.log(`Target node version: ${version} ${arch}`);
+
+      // Note that version in node is a node's version, while
+      // deno's version is an object { deno: .., typescript: .., v8: ..}
+
+      logger.log(`Target deno version: ${JSON.stringify(version)}`);
       /* __GDPR__
                 "nodeVersion" : {
                     "version" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
